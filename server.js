@@ -1,5 +1,5 @@
 const fi = require('./fielInfo');
-const sw = require('./installedSoftwares');
+const sw = require('./software');
 
 (
     async() => {
