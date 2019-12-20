@@ -1,11 +1,10 @@
-'use strict';
-
 const { exec, execSync } = require('child_process');
+
 const MAX_BUFFER_SIZE = 1024 * 5000;
 
 const getQueryStringArray = () => {
-    switch (process.arch) {
-        case 'x86': return [
+    switch(process.arch) {
+        case 'x64': return [
             getWindowsCommandPath() + '\\REG QUERY HKLM\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\ /s',
             getWindowsCommandPath() + '\\REG QUERY HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\ /s'
         ];
@@ -15,9 +14,59 @@ const getQueryStringArray = () => {
     }
 };
 
-Array.prototype.removeFirst = function () {
+Array.prototype.removeFirst = function() {
     this.shift();
     return this;
+};
+
+const getWindowsCommandPath = () => {
+    if (process.arch === 'ia32' && process.env.hasOwnProperty('PROCESSOR_ARCHITEW6432')) {
+        return '%windir%\\sysnative\\cmd.exe /c %windir%\\System32'
+    } else {
+        return '%windir%\\System32';
+    }
+};
+
+const getAllInstalledSoftware = () => {
+    return new Promise ((resolve, reject) => {
+        const resolvers = [];
+        const rejectors = [];
+        const execPromises = [];
+
+        getQueryStringArray().forEach((queryString, index) => {
+            execPromises.push(new Promise((execRes, execRej) => {
+                resolvers.push(execRes);
+                rejectors.push(execRej);
+            }));
+
+            exec(queryString, {maxBuffer: MAX_BUFFER_SIZE}, (err, stdout, stderr) => {
+                if (!err) {
+                    resolvers[index](stdout.toString());
+                } else {
+                    rejectors[index](stderr.toString());
+                }
+            });
+        });
+
+        Promise.all(execPromises).then(resultsArray => {
+            const fullList = resultsArray.slice(1).reduce((accumulatingList, queryResult) => {
+                return accumulatingList + queryResult.trimRight();
+            }, resultsArray[0].trim());
+            resolve(processCmdOutput(fullList));
+        }).catch(error => {
+            reject(error);
+        });
+    })
+};
+
+const getAllInstalledSoftwareSync = () => {
+    const resultsArray = getQueryStringArray().map((queryString) => {
+        return execSync(queryString).toString();
+    });
+    const fullList = resultsArray.slice(1).reduce((accumulatingList, queryResult) => {
+        return accumulatingList + queryResult.trimRight();
+    }, resultsArray[0].trim());
+    return processCmdOutput(fullList);
 };
 
 const processCmdOutput = (fullList) => {
@@ -47,60 +96,7 @@ const processCmdOutput = (fullList) => {
     return softwareList;
 };
 
-const getWindowsCommandPath = () => {
-    if (process.arch === 'ia32' && process.env.hasOwnProperty('PROCESSOR_ARCHITEW6432')) {
-        return '%windir%\\sysnative\\cmd.exe /c %windir%\\System32'
-    } else {
-        return '%windir%\\System32';
-    }
+module.exports = exports = {
+    getAllInstalledSoftwareSync: getAllInstalledSoftwareSync,
+    getAllInstalledSoftware: getAllInstalledSoftware
 };
-
-const getAllInstalledSoftware = () => {
-    return new Promise((resolve, reject) => {
-        const resolvers = [],
-            rejectors = [],
-            execPromises = [];
-
-        getQueryStringArray().forEach((queryString, index) => {
-            execPromises.push(
-                new Promise((execRes, execRej) => {
-                    resolvers.push(execRes);
-                    rejectors.push(execRej);
-                })
-            );
-
-            exec(queryString, { maxBuffer: MAX_BUFFER_SIZE }, (err, stdout, stderr) => {
-                if (!err) {
-                    resolvers[index](stdout.toString());
-                }
-                else {
-                    rejectors[index](stderr.toString());
-                }
-            });
-
-        });
-        Promise.all(execPromises).then(resultArray => {
-            const fullList = resultArray.slice(1).reduce((accumulatingList, queryResults) => {
-                return accumulatingList + queryResults.trimRight();
-            }, resultArray[0].trim());
-            resolve(processCmdOutput(fullList));
-        }).catch(error => {
-            reject(error);
-        });
-    });
-};
-
-const getAllInstalledSoftwareSync = () =>{
-    const resultsArray = getQueryStringArray().map((queryString)=>{
-        return execSync(queryString).toString();
-    });
-    const fullList = resultArray.slice(1).reduce((accumulatingList, queryResult)=>{
-return accumulatingList + queryResult.trimRight();
-    }, resultsArray[0].trim());
-    return processCmdOutput(fullList);
-}
-
-module.exports = {
-    getAllInstalledSoftware : getAllInstalledSoftware,
-    getAllInstalledSoftwareSync : getAllInstalledSoftwareSync
-}

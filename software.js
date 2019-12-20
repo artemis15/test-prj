@@ -1,7 +1,7 @@
 'use strict';
 
 const { exec, execSync } = require('child_process');
-const winHerlper = require('./winHelper');
+const winHelper = require('./winHelper');
 let _platform = process.platform;
 const _linux = (_platform === 'linux');
 const _darwin = (_platform === 'darwin');
@@ -27,7 +27,7 @@ function softwares(callback) {
                             result.softwareList.push({
                                 name: getData(element._name),
                                 version: getData(element.version),
-                                vendor: ''
+                                manufacturer: ''
                             });
                         }
                         if (callback) { callback(result); }
@@ -39,10 +39,19 @@ function softwares(callback) {
                     resolve(result);
                 }
             }
-            if (_windows){
+            else if (_windows){
                 try {
-                    let installedSoftwares = winHerlper.getAllInstalledSoftwareSync();
-
+                    let installedSoftwares = winHelper.getAllInstalledSoftwareSync();
+                    for(var i of installedSoftwares)
+                    {
+                        result.softwareList.push({
+                            name: getData(i.DisplayName),
+                            version : getData(i.DisplayVersion),
+                            manufacturer : getData(i.Publisher)
+                        });
+                    }
+                    if(callback) {callback(result);}
+                    resolve(result);
                 } catch (error) {
                     if(callback) { callback(result);}
                     resolve(result);
