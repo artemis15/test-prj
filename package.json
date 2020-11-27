@@ -10,6 +10,6 @@
   "license": "ISC",
   "dependencies": {
     "date-and-time": "^0.10.0",
-    "systeminformation": "^4.15.3"
+    "systeminformation": "^4.30.5"
   }
 }
