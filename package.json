@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "date-and-time": "^0.10.0",
+    "date-and-time": "^0.14.2",
     "systeminformation": "^4.15.3"
   }
 }
